@@ -77,10 +77,12 @@ jobs:
 
     - name: Sync OrangeFox sources and minimal manifest
       run: |
-        cd ${{ steps.pwd.outputs.workspace-folder }}
-        git clone ${{ github.event.inputs.SYNC_URL }}
-        cd sync
-        ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        # Clone the sync script repository
+        git clone ${{ github.event.inputs.SYNC_URL }} ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
+        # Navigate to the sync script directory
+        cd ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
+        # Run the sync script, making sure the target path is absolute
+        ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path "${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}"
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone device tree
