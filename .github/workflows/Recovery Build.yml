@@ -86,7 +86,16 @@ jobs:
     - name: Clone device tree
       run: |
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        # Create the exact directory path where the device tree content should reside
+        mkdir -p ${{ github.event.inputs.DEVICE_PATH }}
+        # Clone the device tree repo directly into that directory
         git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
+        # Move the contents of the cloned repository up one level
+        # The git clone command creates a subdirectory with the repo name (android_device_OPPO_A83)
+        # We need to move its contents directly into device/OPPO/A83
+        mv ${{ github.event.inputs.DEVICE_PATH }}/android_device_OPPO_A83/* ${{ github.event.inputs.DEVICE_PATH }}/
+        # Remove the now empty subdirectory
+        rmdir ${{ github.event.inputs.DEVICE_PATH }}/android_device_OPPO_A83
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone common tree
