@@ -10,19 +10,19 @@ on:
       MANIFEST_BRANCH:
         description: 'MANIFEST_BRANCH'
         required: true
-        default: '11.0'
+        default: 'twrp-7.1' # Changed from '11.0' for Android 7.1.1
       DEVICE_TREE_URL:
         description: 'DEVICE_TREE_URL'
         required: true
-        default: 'https://github.com/OrangeFoxRecovery/device_xiaomi_garden'
+        default: 'https://github.com/lpxx50117/android_device_OPPO_A83' # Changed from 'xiaomi_garden'
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
-        default: 'fox_11.0_Q'
+        default: 'android-7.1' # Changed from 'fox_11.0_Q'
       DEVICE_PATH:
         description: 'DEVICE_PATH'
         required: true
-        default: 'device/xiaomi/garden'
+        default: 'device/OPPO/A83' # Changed from 'xiaomi/garden'
       COMMON_TREE_URL:
         description: 'COMMON_TREE_URL (if no common tree, leave blank)'
         required: false
@@ -32,11 +32,11 @@ on:
       DEVICE_NAME:
         description: 'DEVICE_NAME'
         required: true
-        default: 'garden'
+        default: 'A83' # Changed from 'garden'
       MAKEFILE_NAME:
         description: 'MAKEFILE_NAME'
         required: true
-        default: 'twrp_garden'
+        default: 'omni_A83' # Changed from 'twrp_garden' to correct makefile name
       BUILD_TARGET:
         description: 'BUILD_TARGET'
         required: true
@@ -45,7 +45,7 @@ on:
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04 # Changed from ubuntu-20.04 to fix retirement error
     permissions:
       contents: write
     steps:
@@ -85,17 +85,12 @@ jobs:
 
     - name: Clone device tree
       run: |
+        # Go to the root of the OrangeFox source directory
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        # Create the exact directory path where the device tree content should reside
+        # Create the target directory structure where the device tree content should reside
         mkdir -p ${{ github.event.inputs.DEVICE_PATH }}
-        # Clone the device tree repo directly into that directory
-        git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
-        # Move the contents of the cloned repository up one level
-        # The git clone command creates a subdirectory with the repo name (android_device_OPPO_A83)
-        # We need to move its contents directly into device/OPPO/A83
-        mv ${{ github.event.inputs.DEVICE_PATH }}/android_device_OPPO_A83/* ${{ github.event.inputs.DEVICE_PATH }}/
-        # Remove the now empty subdirectory
-        rmdir ${{ github.event.inputs.DEVICE_PATH }}/android_device_OPPO_A83
+        # Clone the device tree repository directly into the created path
+        git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} "${{ github.event.inputs.DEVICE_PATH }}"
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone common tree
