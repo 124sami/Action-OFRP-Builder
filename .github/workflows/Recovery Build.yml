@@ -10,19 +10,19 @@ on:
       MANIFEST_BRANCH:
         description: 'MANIFEST_BRANCH'
         required: true
-        default: 'twrp-7.1' # Changed from '11.0' for Android 7.1.1
+        default: 'android-7.1'
       DEVICE_TREE_URL:
         description: 'DEVICE_TREE_URL'
         required: true
-        default: 'https://github.com/lpxx50117/android_device_OPPO_A83' # Changed from 'xiaomi_garden'
+        default: 'https://github.com/lpxx50117/android_device_OPPO_A83'
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
-        default: 'android-7.1' # Changed from 'fox_11.0_Q'
+        default: 'android-7.1'
       DEVICE_PATH:
         description: 'DEVICE_PATH'
         required: true
-        default: 'device/OPPO/A83' # Changed from 'xiaomi/garden'
+        default: 'device/OPPO/A83'
       COMMON_TREE_URL:
         description: 'COMMON_TREE_URL (if no common tree, leave blank)'
         required: false
@@ -32,11 +32,11 @@ on:
       DEVICE_NAME:
         description: 'DEVICE_NAME'
         required: true
-        default: 'A83' # Changed from 'garden'
+        default: 'A83'
       MAKEFILE_NAME:
         description: 'MAKEFILE_NAME'
         required: true
-        default: 'omni_A83' # Changed from 'twrp_garden' to correct makefile name
+        default: 'omni_A83'
       BUILD_TARGET:
         description: 'BUILD_TARGET'
         required: true
@@ -45,16 +45,13 @@ on:
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-22.04 # Changed from ubuntu-20.04 to fix retirement error
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-
-    # You might want to Checkout your repo first, but not mandatory
     - name: Check Out
       uses: actions/checkout@v3
 
-    # Cleanup The Actions Workspace Using Custom Composite Run Actions
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
 
@@ -77,28 +74,20 @@ jobs:
 
     - name: Sync OrangeFox sources and minimal manifest
       run: |
-        # Clone the sync script repository
         git clone ${{ github.event.inputs.SYNC_URL }} ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
-        # Navigate to the sync script directory
         cd ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
-        # Run the sync script, making sure the target path is absolute
         ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path "${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}"
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone device tree
       run: |
-        # Go to the root of the OrangeFox source directory
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        # Create the target directory structure where the device tree content should reside
         mkdir -p ${{ github.event.inputs.DEVICE_PATH }}
-        # Clone the device tree repository directly into the created path
         git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} "${{ github.event.inputs.DEVICE_PATH }}"
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone common tree
-      if: |
-        github.event.inputs.COMMON_TREE_URL != null
-        && github.event.inputs.COMMON_PATH != null
+      if: github.event.inputs.COMMON_TREE_URL != '' && github.event.inputs.COMMON_PATH != ''
       run: |
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
         git clone ${{ github.event.inputs.COMMON_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.COMMON_PATH }}
