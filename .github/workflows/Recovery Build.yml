@@ -4,132 +4,101 @@ on:
   workflow_dispatch:
     inputs:
       SYNC_URL:
-        description: 'SYNC_URL'
+        description: "Enter OrangeFox manifest Git URL"
         required: true
-        default: 'https://gitlab.com/OrangeFox/sync.git'
+        default: "https://github.com/OrangeFoxRecovery/manifest.git"
       MANIFEST_BRANCH:
-        description: 'MANIFEST_BRANCH'
+        description: "Enter Manifest Branch"
         required: true
-        default: 'twrp-7.1'
-      DEVICE_TREE_URL:
-        description: 'DEVICE_TREE_URL'
+        default: "twrp-7.1"
+      DEVICE_TREE:
+        description: "Enter Device Tree Git URL"
         required: true
-        default: 'https://github.com/lpxx50117/android_device_OPPO_A83'
-      DEVICE_TREE_BRANCH:
-        description: 'DEVICE_TREE_BRANCH'
-        required: true
-        default: 'android-7.1'
+        default: "https://github.com/lpxx50117/android_device_OPPO_A83"
       DEVICE_PATH:
-        description: 'DEVICE_PATH'
+        description: "Enter Device Path (device/brand/codename)"
         required: true
-        default: 'device/OPPO/A83'
-      COMMON_TREE_URL:
-        description: 'COMMON_TREE_URL (if no common tree, leave blank)'
-        required: false
-      COMMON_PATH:
-        description: 'COMMON_PATH (if no common tree, leave blank)'
-        required: false
-      DEVICE_NAME:
-        description: 'DEVICE_NAME'
+        default: "device/OPPO/A83"
+      DEVICE_BRANCH:
+        description: "Enter Device Tree Branch"
         required: true
-        default: 'A83'
-      MAKEFILE_NAME:
-        description: 'MAKEFILE_NAME'
-        required: true
-        default: 'omni_A83'
-      BUILD_TARGET:
-        description: 'BUILD_TARGET'
-        required: true
-        default: 'recovery'
+        default: "android-7.1"
 
 jobs:
   build:
-    if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
     steps:
+
+    - name: Set up job
+      run: echo "Setting up job"
 
     - name: Check Out
       uses: actions/checkout@v3
 
     - name: Cleanup
-      uses: rokibhasansagar/slimhub_actions@main
+      run: |
+        sudo swapoff -a || true
+        sudo rm -f /swapfile || true
+        sudo apt clean
 
     - name: Initialize workspace
-      run: |
-        mkdir workspace
-        cd workspace
-        echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
       id: pwd
+      run: echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
 
     - name: Prepare the build environment
       run: |
-        sudo apt install git aria2 -y
-        git clone https://gitlab.com/OrangeFox/misc/scripts
-        cd scripts
-        sudo bash setup/android_build_env.sh
-        sed -i 's/cd -/cd ../g' setup/install_android_sdk.sh
-        sudo bash setup/install_android_sdk.sh
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        sudo apt update
+        sudo apt install git unzip bc curl repo -y
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
 
     - name: Sync OrangeFox sources and minimal manifest
       run: |
-        git clone ${{ github.event.inputs.SYNC_URL }} ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
-        cd ${{ steps.pwd.outputs.workspace-folder }}/sync_scripts
-        ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path "${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}"
+        git clone ${{ github.event.inputs.SYNC_URL }} sync_scripts
+        cd sync_scripts
+        ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path ../fox_${{ github.event.inputs.MANIFEST_BRANCH }}
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
     - name: Clone device tree
       run: |
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
         mkdir -p ${{ github.event.inputs.DEVICE_PATH }}
-        git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} "${{ github.event.inputs.DEVICE_PATH }}"
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        git clone ${{ github.event.inputs.DEVICE_TREE }} -b ${{ github.event.inputs.DEVICE_BRANCH }} ${{ github.event.inputs.DEVICE_PATH }}
 
     - name: Clone common tree
-      if: |
-        github.event.inputs.COMMON_TREE_URL != null
-        && github.event.inputs.COMMON_PATH != null
+      if: ${{ github.event.inputs.COMMON_TREE && github.event.inputs.COMMON_PATH && github.event.inputs.COMMON_BRANCH }}
       run: |
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        git clone ${{ github.event.inputs.COMMON_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.COMMON_PATH }}
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        mkdir -p ${{ github.event.inputs.COMMON_PATH }}
+        git clone ${{ github.event.inputs.COMMON_TREE }} -b ${{ github.event.inputs.COMMON_BRANCH }} ${{ github.event.inputs.COMMON_PATH }}
 
     - name: Set Swap Space
-      uses: pierotofy/set-swap-space@master
-      with:
-        swap-size-gb: 12
+      run: |
+        sudo fallocate -l 6G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
 
     - name: Building recovery
       run: |
         cd ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        set +e
         source build/envsetup.sh
-        export ALLOW_MISSING_DEPENDENCIES=true
-        set -e
-        lunch ${{ github.event.inputs.MAKEFILE_NAME }}-eng && make clean && mka adbd ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
-      continue-on-error: true
+        lunch omni_A83-eng || lunch twrp_A83-eng
+        mka recoveryimage -j$(nproc)
 
     - name: Check the output directory before uploading
       run: |
-        ls -al ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/
-        echo
-        ls -al ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/
+        ls -alh ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/*/recovery.img
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.img
-          ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
-        name: ${{ github.event.inputs.DEVICE_NAME }}-${{ github.run_id }}
-        tag_name: ${{ github.run_id }}
-        body: |
-          Manifest: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Device: ${{ github.event.inputs.DEVICE_NAME }}
-          Target: ${{ github.event.inputs.BUILD_TARGET }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+        name: "Recovery Build for A83"
+        tag_name: "orangefox-$(date +'%Y%m%d-%H%M')"
+        files: ${{ steps.pwd.outputs.workspace-folder }}/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/*/recovery.img
+
+    - name: Post Check Out
+      run: echo "Done building!"
+
+    - name: Complete job
+      run: echo "Workflow complete ✅"
