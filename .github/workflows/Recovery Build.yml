@@ -31,10 +31,13 @@ jobs:
             pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev ccache python-is-python3
 
     - name: Sync OrangeFox sources and minimal manifest
-      run: |
-        git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/OrangeFoxRecovery/manifest.git sync_scripts
-        cd sync_scripts
-        ./orangefox_sync.sh --branch twrp-7.1 --path ../fox_twrp-7.1
+  run: |
+    git clone https://$GH_PAT@github.com/OrangeFoxRecovery/manifest.git sync_scripts
+    cd sync_scripts
+    ./orangefox_sync.sh --branch twrp-7.1 --path ../fox_twrp-7.1
+  env:
+    GH_PAT: ${{ secrets.GH_PAT }}
+    
 
     - name: Clone device tree
       run: |
