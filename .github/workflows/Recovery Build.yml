@@ -11,8 +11,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-      - name: Set up environment
-      run: |
+     - name: Set up environment
+       run: |
         sudo dpkg --add-architecture i386
         sudo apt update
         sudo apt install -y \
