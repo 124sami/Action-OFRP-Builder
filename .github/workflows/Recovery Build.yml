@@ -23,7 +23,7 @@ jobs:
           lzop pngcrush bc rsync imagemagick \
           squashfs-tools schedtool liblz4-tool libssl-dev wget
 
-        # Manually install Python 2.7
+        # Install Python 2.7 manually
         wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
         tar -xzf Python-2.7.18.tgz
         cd Python-2.7.18
@@ -35,4 +35,27 @@ jobs:
 
     - name: Initialize repo and sync source
       run: |
-        mkdir -p ~/orangefox
+        mkdir -p ~/orangefox && cd ~/orangefox
+        git config --global user.name "builder"
+        git config --global user.email "builder@localhost"
+        repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_9.0
+        repo sync -j$(nproc) --force-sync
+
+    - name: Clone device tree
+      run: |
+        cd ~/orangefox
+        git clone https://github.com/124sami/android_device_oppo_A83.git -b android-7.1 device/oppo/A83
+
+    - name: Setup and build recovery
+      run: |
+        cd ~/orangefox
+        source build/envsetup.sh
+        lunch omni_A83-eng
+        mka recoveryimage -j$(nproc)
+
+    - name: Upload Recovery
+      uses: actions/upload-artifact@v4
+      with:
+        name: recovery.img
+        path: ~/orangefox/out/target/product/A83/recovery.img
+
