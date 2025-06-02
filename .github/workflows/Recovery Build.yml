@@ -23,7 +23,7 @@ jobs:
           lzop pngcrush bc rsync imagemagick \
           squashfs-tools schedtool liblz4-tool libssl-dev wget
 
-        # Install Python 2.7 manually
+        # Manually install Python 2.7
         wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
         tar -xzf Python-2.7.18.tgz
         cd Python-2.7.18
@@ -33,32 +33,6 @@ jobs:
         cd ..
         sudo ln -sf /usr/local/bin/python2.7 /usr/bin/python
 
-        # Install repo tool
-        sudo curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
-        sudo chmod a+rx /usr/local/bin/repo
-
     - name: Initialize repo and sync source
       run: |
-        mkdir -p ~/orangefox && cd ~/orangefox
-        git config --global user.name "builder"
-        git config --global user.email "builder@localhost"
-        repo init -u https://gitlab.com/OrangeFox/sync.git -b twrp-7.1
-        repo sync -j$(nproc) --force-sync
-
-    - name: Clone device tree
-      run: |
-        cd ~/orangefox
-        git clone https://github.com/124sami/android_device_OPPO_A83.git -b android-7.1 device/oppo/A83
-
-    - name: Setup and build recovery
-      run: |
-        cd ~/orangefox
-        source build/envsetup.sh
-        lunch omni_A83-eng
-        mka recoveryimage
-
-    - name: Upload Recovery
-      uses: actions/upload-artifact@v4
-      with:
-        name: recovery.img
-        path: ~/orangefox/out/target/product/A83/recovery.img
+        mkdir -p ~/orangefox
