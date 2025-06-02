@@ -23,15 +23,15 @@ jobs:
           lzop pngcrush bc rsync imagemagick \
           squashfs-tools schedtool liblz4-tool libssl-dev wget
 
-    - name: Install repo tool
+    - name: Install repo tool and set PATH
       run: |
         mkdir -p ~/.bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
         chmod a+x ~/.bin/repo
+        echo "$HOME/.bin" >> $GITHUB_PATH  # ✅ Adds to PATH globally
 
     - name: Initialize repo and sync source
       run: |
-        export PATH=$PATH:$HOME/.bin
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
