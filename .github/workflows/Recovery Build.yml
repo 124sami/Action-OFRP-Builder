@@ -6,74 +6,69 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
     - name: Set up job
-      uses: actions/checkout@v3
+      run: echo "Starting build..."
 
-    - name: Clean up
+    - name: Install dependencies
       run: |
-        sudo swapoff -a || true
-        sudo rm -f /swapfile || true
+        sudo apt update
+        sudo apt install -y bc bison build-essential curl flex git \
+          gnupg gperf libncurses5-dev libssl-dev libxml2-utils lzop \
+          pngcrush rsync schedtool squashfs-tools xsltproc zip \
+          lib32z1 lib32ncurses5-dev lib32readline-dev lib32stdc++6 \
+          python-is-python3 git wget unzip
 
-    - name: Initialize workspace
+    - name: Set up repo
       run: |
-        mkdir -p $GITHUB_WORKSPACE/fox_twrp-7.1
+        mkdir ~/fox && cd ~/fox
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
 
-    - name: Prepare the build environment
+    - name: Clone sync scripts
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev \
-            lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop openjdk-8-jdk \
-            pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev ccache python-is-python3
+        cd ~/fox
+        git clone https://github.com/OrangeFoxRecovery/manifest.git -b sync_scripts sync_scripts
 
     - name: Sync OrangeFox sources and minimal manifest
-  run: |
-    git clone https://$GH_PAT@github.com/OrangeFoxRecovery/manifest.git sync_scripts
-    cd sync_scripts
-    ./orangefox_sync.sh --branch twrp-7.1 --path ../fox_twrp-7.1
-  env:
-    GH_PAT: ${{ secrets.GH_PAT }}
-    
+      run: |
+        cd ~/fox/sync_scripts
+        ./orangefox_sync.sh --branch twrp-7.1 --path ../fox_twrp-7.1
 
     - name: Clone device tree
       run: |
-        cd $GITHUB_WORKSPACE/fox_twrp-7.1
-        mkdir -p device/OPPO/A83
-        git clone https://github.com/lpxx50117/android_device_OPPO_A83 -b android-7.1 device/OPPO/A83
+        cd ~/fox/fox_twrp-7.1
+        git clone https://github.com/124sami/device_oppo_a83 device/oppo/a83
 
     - name: Clone common tree
       run: |
-        cd $GITHUB_WORKSPACE/fox_twrp-7.1
-        mkdir -p device/mediatek/sepolicy_vndr
-        git clone https://github.com/TeamWin/android_device_mediatek_sepolicy_vndr -b android-7.1 device/mediatek/sepolicy_vndr
+        cd ~/fox/fox_twrp-7.1/device/oppo/a83
+        git clone https://github.com/124sami/android_device_oppo_mt6763-common -b ofrp ../../../oppo/mt6763-common
 
-    - name: Set Swap Space
+    - name: Set swap space
       run: |
-        sudo fallocate -l 6G /swapfile
+        sudo fallocate -l 3G /swapfile
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
         sudo swapon /swapfile
 
-    - name: Building recovery
+    - name: Build recovery
       run: |
-        cd $GITHUB_WORKSPACE/fox_twrp-7.1
-        . build/envsetup.sh
-        lunch omni_A83-eng
+        cd ~/fox/fox_twrp-7.1
+        source build/envsetup.sh
+        lunch omni_a83-eng
         mka recoveryimage
 
     - name: Check the output directory before uploading
-      run: |
-        ls -lh $GITHUB_WORKSPACE/fox_twrp-7.1/out/target/product/*
+      run: ls -al ~/fox/fox_twrp-7.1/out/target/product/a83
 
     - name: Upload to Release
-      uses: ncipollo/release-action@v1
+      uses: actions/upload-artifact@v3
       with:
-        artifacts: ${{ github.workspace }}/fox_twrp-7.1/out/target/product/*/recovery.img
-        tag: "latest"
-        allowUpdates: true
-        token: ${{ secrets.GITHUB_TOKEN }}
+        name: OrangeFox-Recovery
+        path: ~/fox/fox_twrp-7.1/out/target/product/a83/recovery.img
 
+    - name: Post job cleanup
+      run: echo "Build finished."
+      
