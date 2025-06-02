@@ -12,7 +12,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up environment
-       run: |
+      run: |
         sudo dpkg --add-architecture i386
         sudo apt update
         sudo apt install -y \
@@ -21,10 +21,9 @@ jobs:
           libc6-dev-i386 lib32z1 lib32stdc++6 lib32gcc-s1 \
           libncurses5-dev libx11-dev libxml2-utils xsltproc unzip \
           lzop pngcrush bc rsync imagemagick \
-          squashfs-tools schedtool liblz4-tool libssl-dev
+          squashfs-tools schedtool liblz4-tool libssl-dev wget
 
         # Install Python 2.7 manually
-        sudo apt install -y wget
         wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
         tar -xzf Python-2.7.18.tgz
         cd Python-2.7.18
@@ -34,14 +33,15 @@ jobs:
         cd ..
         sudo ln -sf /usr/local/bin/python2.7 /usr/bin/python
 
+        # Install repo tool
+        sudo curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
+        sudo chmod a+rx /usr/local/bin/repo
 
     - name: Initialize repo and sync source
       run: |
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
-        sudo curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
-        sudo chmod a+rx /usr/local/bin/repo
         repo init -u https://gitlab.com/OrangeFox/sync.git -b twrp-7.1
         repo sync -j$(nproc) --force-sync
 
