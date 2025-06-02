@@ -11,34 +11,33 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Initialize environment
+    - name: Set up environment
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python2.7 repo liblzma-dev
+        sudo apt update
+        sudo apt install -y git wget curl python2 bc bison build-essential zip curl flex g++-multilib gcc-multilib gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev liblzma-dev
 
-    - name: Set up build environment
+    - name: Initialize repo and sync source
       run: |
-        mkdir orangefox
-        cd orangefox
-        git config --global user.name "Your Name"
-        git config --global user.email "you@example.com"
+        mkdir -p ~/orangefox && cd ~/orangefox
+        git config --global user.name "builder"
+        git config --global user.email "builder@localhost"
         repo init -u https://gitlab.com/OrangeFox/sync.git -b twrp-7.1
         repo sync -j$(nproc) --force-sync
 
     - name: Clone device tree
       run: |
-        cd orangefox
-        git clone https://github.com/124sami/android_device_OPPO_A83.git -b android-7.1 device/OPPO/A83
+        cd ~/orangefox
+        git clone https://github.com/124sami/android_device_OPPO_A83.git -b android-7.1 device/oppo/A83
 
-    - name: Lunch target
+    - name: Setup and build recovery
       run: |
-        cd orangefox
+        cd ~/orangefox
         source build/envsetup.sh
         lunch omni_A83-eng
         mka recoveryimage
 
-    - name: Upload recovery image
+    - name: Upload Recovery
       uses: actions/upload-artifact@v3
       with:
-        name: OrangeFox-Recovery
-        path: orangefox/out/target/product/A83/recovery.img
+        name: recovery.img
+        path: ~/orangefox/out/target/product/A83/recovery.img
