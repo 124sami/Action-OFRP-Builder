@@ -21,7 +21,7 @@ jobs:
           libc6-dev-i386 lib32z1 lib32stdc++6 lib32gcc-s1 \
           libncurses5-dev libx11-dev libxml2-utils xsltproc unzip \
           lzop pngcrush bc rsync imagemagick \
-          squashfs-tools schedtool liblz4-tool libssl-dev wget
+          squashfs-tools schedtool liblz4-tool libssl-dev wget patch
 
     - name: Install repo tool and set PATH
       run: |
@@ -30,16 +30,22 @@ jobs:
         chmod a+x ~/.bin/repo
         echo "$HOME/.bin" >> $GITHUB_PATH
 
-    - name: Initialize repo and apply fox_9.0 patch
+    - name: Initialize repo and patch for fox_9.0
       run: |
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
-        repo init -u https://gitlab.com/OrangeFox/sync.git -b master
-        cd .repo
-        wget https://gitlab.com/OrangeFox/sync/-/raw/master/legacy/patches/patch-manifest-fox_7.1.diff
+
+        # Init with no manifest to allow patching first
+        repo init -u https://gitlab.com/OrangeFox/sync.git -b master --depth=1
+
+        # Apply the legacy fox_9.0 patch
+        cd .repo/manifests
+        wget https://gitlab.com/OrangeFox/sync/-/raw/master/legacy/patches/patch-manifest-fox_9.0.diff
         patch -p1 < patch-manifest-fox_9.0.diff
-        cd ..
+        cd ../..
+
+        # Now sync with patched manifest
         repo sync -j$(nproc) --force-sync
 
     - name: Clone device tree
