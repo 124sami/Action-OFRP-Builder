@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
+    - name: Checkout source
       uses: actions/checkout@v3
 
-    - name: Set up environment
+    - name: Set up build environment
       run: |
         sudo dpkg --add-architecture i386
         sudo apt update
@@ -28,14 +28,14 @@ jobs:
         mkdir -p ~/.bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
         chmod a+x ~/.bin/repo
-        echo "$HOME/.bin" >> $GITHUB_PATH  # ✅ Adds to PATH globally
+        echo "$HOME/.bin" >> $GITHUB_PATH
 
     - name: Initialize repo and sync source
       run: |
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
-        repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_9.0
+        repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_11.0
         repo sync -j$(nproc) --force-sync
 
     - name: Clone device tree
@@ -50,7 +50,7 @@ jobs:
         lunch omni_A83-eng
         mka recoveryimage -j$(nproc)
 
-    - name: Upload Recovery
+    - name: Upload Recovery Image
       uses: actions/upload-artifact@v4
       with:
         name: recovery.img
