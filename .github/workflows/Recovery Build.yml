@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
+    - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up build environment
+    - name: Set up environment
       run: |
         sudo dpkg --add-architecture i386
         sudo apt update
@@ -30,18 +30,17 @@ jobs:
         chmod a+x ~/.bin/repo
         echo "$HOME/.bin" >> $GITHUB_PATH
 
-    - name: Initialize repo and sync source
+    - name: Initialize repo and apply fox_9.0 patch
       run: |
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
         repo init -u https://gitlab.com/OrangeFox/sync.git -b master
         cd .repo
-        wget https://gitlab.com/OrangeFox/sync/-/raw/master/legacy/patches/patch-manifest-fox_9.0.diff
-        patch -p1 < patch-manifest-fox_7.1.diff
+        wget https://gitlab.com/OrangeFox/sync/-/raw/master/legacy/patches/patch-manifest-fox_7.1.diff
+        patch -p1 < patch-manifest-fox_9.0.diff
         cd ..
         repo sync -j$(nproc) --force-sync
-
 
     - name: Clone device tree
       run: |
