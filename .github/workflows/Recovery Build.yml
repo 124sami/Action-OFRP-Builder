@@ -42,7 +42,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04 # Changed from ubuntu-latest or ubuntu-20.04 to the supported LTS version
+    runs-on: ubuntu-22.04 # Changed to the supported LTS version
 
     steps:
     - name: Checkout
@@ -55,10 +55,11 @@ jobs:
         sudo apt install -y \
           git-core gnupg flex bison gperf build-essential \
           zip curl zlib1g-dev gcc-multilib g++-multilib \
-          libc6-dev-i386 lib32z1 lib32stdc++6 lib32gcc-s1 \
+          libc6-dev-i32 lib32z1 lib32stdc++6 lib32gcc-s1 \
           libncurses5-dev libx11-dev libxml2-utils xsltproc unzip \
           lzop pngcrush bc rsync imagemagick \
-          squashfs-tools schedtool liblz4-tool libssl-dev wget patch
+          squashfs-tools schedtool liblz4-tool libssl-dev wget patch \
+          python2 # Ensure python2 is installed
 
     - name: Install repo tool and set PATH
       run: |
@@ -86,8 +87,8 @@ jobs:
     - name: Setup and build recovery
       run: |
         cd ~/orangefox
+        export PATH=/usr/bin/python2:$PATH # ADDED THIS LINE to prioritize python2
         source build/envsetup.sh
-        # Use the input variables for lunch and mka
         lunch omni_${{ github.event.inputs.DEVICE_NAME }}-eng
         mka ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc)
 
