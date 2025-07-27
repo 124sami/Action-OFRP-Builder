@@ -2,10 +2,47 @@ name: Recovery Build
 
 on:
   workflow_dispatch:
+    inputs:
+      MANIFEST_BRANCH:
+        description: 'Manifest Branch (e.g., twrp-7.1, 10.0, 11.0, 12.1)'
+        required: true
+        default: 'twrp-7.1' # Set default to the correct branch for your device
+      DEVICE_TREE_URL:
+        description: 'Device Tree URL'
+        required: true
+        default: 'https://github.com/lpxx50117/android_device_OPPO_A83' # Set default to your device tree
+      DEVICE_TREE_BRANCH:
+        description: 'Device Tree Branch'
+        required: true
+        default: 'android-7.1' # Set default to your device tree branch
+      DEVICE_PATH:
+        description: 'Device Path (e.g., device/xiaomi/mido)'
+        required: true
+        default: 'device/OPPO/A83' # Set default to your device path
+      COMMON_TREE_URL:
+        description: 'Common Tree URL (if no common tree, leave blank)'
+        required: false
+        default: ''
+      COMMON_PATH:
+        description: 'Common Path (if no common tree, leave blank)'
+        required: false
+        default: ''
+      DEVICE_NAME:
+        description: 'Device Name (e.g., mido)'
+        required: true
+        default: 'A83' # Set default to your device name
+      MAKEFILE_NAME:
+        description: 'Makefile Name (e.g., twrp_mido, orangefox_gardon)'
+        required: true
+        default: 'twrp_cph1729' # Set default to your specific makefile name
+      BUILD_TARGET:
+        description: 'Build Target (e.g., recovery)'
+        required: true
+        default: 'recovery'
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # Changed from ubuntu-latest or ubuntu-20.04 to the supported LTS version
 
     steps:
     - name: Checkout
@@ -30,38 +67,32 @@ jobs:
         chmod a+x ~/.bin/repo
         echo "$HOME/.bin" >> $GITHUB_PATH
 
-    - name: Initialize repo and patch for fox_9.0
+    - name: Initialize repo and sync # Renamed for clarity, removed fox_9.0 specific steps
       run: |
         mkdir -p ~/orangefox && cd ~/orangefox
         git config --global user.name "builder"
         git config --global user.email "builder@localhost"
-
-        # Init with no manifest to allow patching first
-        repo init -u https://gitlab.com/OrangeFox/sync.git -b master --depth=1
-
-        # Apply the legacy fox_9.0 patch
-        cd .repo/manifests
-        wget https://gitlab.com/OrangeFox/sync/-/raw/master/legacy/patches/patch-manifest-fox_9.0.diff
-        patch -p1 < patch-manifest-fox_9.0.diff
-        cd ../..
-
-        # Now sync with patched manifest
+        # Initialize repo with the correct TWRP 7.1 manifest
+        repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b ${{ github.event.inputs.MANIFEST_BRANCH }} --depth=1
+        # Sync the repositories
         repo sync -j$(nproc) --force-sync
 
     - name: Clone device tree
       run: |
         cd ~/orangefox
-        git clone https://github.com/124sami/android_device_oppo_A83.git -b android-7.1 device/oppo/A83
+        # Use the input variables directly here
+        git clone ${{ github.event.inputs.DEVICE_TREE_URL }}.git -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ${{ github.event.inputs.DEVICE_PATH }}
 
     - name: Setup and build recovery
       run: |
         cd ~/orangefox
         source build/envsetup.sh
-        lunch omni_A83-eng
-        mka recoveryimage -j$(nproc)
+        # Use the input variables for lunch and mka
+        lunch omni_${{ github.event.inputs.DEVICE_NAME }}-eng
+        mka ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc)
 
     - name: Upload Recovery Image
       uses: actions/upload-artifact@v4
       with:
         name: recovery.img
-        path: ~/orangefox/out/target/product/A83/recovery.img
+        path: ~/orangefox/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery.img
